@@ -4,6 +4,7 @@ import br.com.aishac.shop.domain.dtos.ShopDTO;
 import br.com.aishac.shop.domain.repository.ShopRepository;
 import br.com.aishac.shop.domain.repository.entities.Shop;
 import br.com.aishac.shop.domain.repository.entities.ShopItem;
+import br.com.aishac.shop.domain.service.events.KafkaClient;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 public class ShopController {
 
     private final ShopRepository shopRepository;
+    private final KafkaClient kafkaClient;
 
     @GetMapping
     @Operation(summary = "Listando as vendas.", description = "Lista das vendas realizadas pelo i-delivery.")
@@ -28,7 +30,7 @@ public class ShopController {
         return shopRepository
                 .findAll()
                 .stream()
-                .map(shop -> ShopDTO.convert(shop))
+                .map(ShopDTO::convert)
                 .collect(Collectors.toList());
     }
 
@@ -45,6 +47,9 @@ public class ShopController {
             shopItem.setShop(shop);
         }
 
-        return ShopDTO.convert(shopRepository.save(shop));
+        shopDTO = ShopDTO.convert(shopRepository.save(shop));
+        kafkaClient.sendMessage(shop);
+
+        return shopDTO;
     }
 }
